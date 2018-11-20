@@ -48,12 +48,14 @@ import java.util.Objects;
 public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallback,
         SecurityController.SecurityControllerCallback, Tunable {
     private static final String TAG = "StatusBarSignalPolicy";
+    private static final String SLOT_VOLTE = "volte";
 
     private final String mSlotAirplane;
     private final String mSlotMobile;
     private final String mSlotWifi;
     private final String mSlotEthernet;
     private final String mSlotVpn;
+    private final String mSlotVolte;
 
     private final Context mContext;
     private final StatusBarIconController mIconController;
@@ -67,6 +69,7 @@ public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallba
     private boolean mBlockEthernet;
     private boolean mActivityEnabled;
     private boolean mForceBlockWifi;
+    private boolean mBlockVolte;
 
     // Track as little state as possible, and only for padding purposes
     private boolean mIsAirplaneMode = false;
@@ -82,6 +85,7 @@ public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallba
         mSlotMobile   = mContext.getString(com.android.internal.R.string.status_bar_mobile);
         mSlotWifi     = mContext.getString(com.android.internal.R.string.status_bar_wifi);
         mSlotEthernet = mContext.getString(com.android.internal.R.string.status_bar_ethernet);
+        mSlotVolte    = SLOT_VOLTE;
         mSlotVpn      = mContext.getString(com.android.internal.R.string.status_bar_vpn);
         mActivityEnabled = mContext.getResources().getBoolean(R.bool.config_showActivity);
 
@@ -130,13 +134,16 @@ public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallba
         boolean blockMobile = blockList.contains(mSlotMobile);
         boolean blockWifi = blockList.contains(mSlotWifi);
         boolean blockEthernet = blockList.contains(mSlotEthernet);
+        boolean blockVolte = blockList.contains(mSlotVolte);
 
         if (blockAirplane != mBlockAirplane || blockMobile != mBlockMobile
-                || blockEthernet != mBlockEthernet || blockWifi != mBlockWifi) {
+                || blockEthernet != mBlockEthernet || blockWifi != mBlockWifi || blockVolte != mBlockVolte) {
             mBlockAirplane = blockAirplane;
             mBlockMobile = blockMobile;
             mBlockEthernet = blockEthernet;
             mBlockWifi = blockWifi || mForceBlockWifi;
+            mBlockVolte = blockVolte;
+
             // Re-register to get new callbacks.
             mNetworkController.removeCallback(this);
             mNetworkController.addCallback(this);
@@ -183,10 +190,19 @@ public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallba
         }
     }
 
+    private void updateVolteState(boolean volte){
+            mIconController.setIcon(mSlotVolte, R.drawable.ic_volte, null);
+            if(mBlockVolte){
+                mIconController.setIconVisibility(mSlotVolte, false);
+            } else {
+                mIconController.setIconVisibility(mSlotVolte, volte);
+            }
+    }
+
     @Override
     public void setMobileDataIndicators(IconState statusIcon, IconState qsIcon, int statusType,
             int qsType, boolean activityIn, boolean activityOut, String typeContentDescription,
-            String description, boolean isWide, int subId, boolean roaming) {
+            String description, boolean isWide, int subId, boolean roaming, boolean volte) {
         MobileIconState state = getState(subId);
         if (state == null) {
             return;
@@ -197,7 +213,7 @@ public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallba
 
         state.visible = statusIcon.visible && !mBlockMobile;
         state.strengthId = statusIcon.icon;
-        state.typeId = statusType;
+        state.typeId = mBlockVolte? statusType: (volte ? 0 : statusType);
         state.contentDescription = statusIcon.contentDescription;
         state.typeContentDescription = typeContentDescription;
         state.roaming = roaming;
@@ -215,6 +231,7 @@ public class StatusBarSignalPolicy implements NetworkControllerImpl.SignalCallba
                 mWifiIconState = wifiCopy;
             }
         }
+        updateVolteState(volte);
     }
 
     private MobileIconState getState(int subId) {

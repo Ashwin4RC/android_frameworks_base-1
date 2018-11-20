@@ -244,6 +244,7 @@ public class CellularTile extends QSTileImpl<SignalState> {
         boolean activityOut;
         boolean noSim;
         boolean roaming;
+        boolean volte;
     }
 
     private final class CellSignalCallback implements SignalCallback {
@@ -335,3 +336,4 @@ public class CellularTile extends QSTileImpl<SignalState> {
         }
     }
 }
+

@@ -437,5 +437,6 @@ public class QSFooterImpl extends FrameLayout implements QSFooter,
         public String contentDescription;
         String typeContentDescription;
         boolean roaming;
+        boolean volte;
     }
 }
